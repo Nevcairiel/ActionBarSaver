@@ -5,10 +5,9 @@ ActionBarSaver = select(2, ...)
 
 local ABS = ActionBarSaver
 local L = ABS.L
-local IS_MOP = select(4, GetBuildInfo()) >= 50001
 
 local restoreErrors, spellCache, macroCache, macroNameCache, highestRanks = {}, {}, {}, {}, {}
-local iconCache, playerClass
+local playerClass
 
 local MAX_MACROS = 54
 local MAX_CHAR_MACROS = 18
@@ -142,19 +141,15 @@ function ABS:RestoreMacros(set)
 				elseif( charNum == MAX_CHAR_MACROS ) then
 					perCharacter = false
 				end
-
-				-- When creating a macro, we have to pass the icon id not the icon path
-				if( not iconCache ) then
-					iconCache = {}
-					for i=1, GetNumMacroIcons() do
-						iconCache[(GetMacroIconInfo(i))] = i
-					end
-				end
 				
 				macroName = self:UncompressText(macroName)
+
+				-- GetMacroInfo still returns the full path while CreateMacro needs the relative
+				-- can also return INTERFACE\ICONS\ aswell, apparently.
+				macroIcon = macroIcon and string.gsub(macroIcon, "[iI][nN][tT][eE][rR][fF][aA][cC][eE]\\[iI][cC][oO][nN][sS]\\", "")
 				
 				-- No macro name means a space has to be used or else it won't be created and saved
-				CreateMacro(macroName == "" and " " or macroName, iconCache[macroIcon] or 1, self:UncompressText(macroData), nil, perCharacter)
+				CreateMacro(macroName == "" and " " or macroName, macroIcon or "INV_Misc_QuestionMark", self:UncompressText(macroData), perCharacter)
 			end
 		end
 	end
@@ -275,12 +270,8 @@ function ABS:RestoreAction(i, type, actionID, binding, ...)
 	-- Restore a spell, flyout or companion
 	if( type == "spell" or type == "flyout" or type == "companion" ) then
 		local spellName, spellRank = ...
-		if( spellCache[spellName] and IS_MOP ) then
+		if( spellCache[spellName] ) then
 			PickupSpellBookItem(spellName);
-		elseif( ( not self.db.restoreRank or spellRank == "" ) and spellCache[spellName] ) then
-			PickupSpellBookItem(spellCache[spellName], BOOKTYPE_SPELL)
-		elseif( spellRank ~= "" and spellCache[spellName .. spellRank] ) then
-			PickupSpellBookItem(spellCache[spellName .. spellRank], BOOKTYPE_SPELL)
 		else
 		    PickupSpell(actionID)
 		end
