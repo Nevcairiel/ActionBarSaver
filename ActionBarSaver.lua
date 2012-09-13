@@ -190,18 +190,22 @@ function ABS:RestoreProfile(name, overrideClass)
 	
 	-- Cache spells
 	for book=1, MAX_SKILLLINE_TABS do
-		local _, _, offset, numSpells = GetSpellTabInfo(book)
+		local _, _, offset, numSpells, _, offSpecID = GetSpellTabInfo(book)
 
 		for i=1, numSpells do
-			local index = offset + i
-			local spell, stance = GetSpellBookItemName(index, BOOKTYPE_SPELL)
-			
-			-- This way we restore the max rank of spells
-			spellCache[spell] = index
-			spellCache[string.lower(spell)] = index
-			
-			if( stance and stance ~= "" ) then
-				spellCache[spell .. stance] = index
+			if offSpecID == 0 then -- don't process grayed-out "offspec" tabs
+				for i=1, numSpells do
+					local index = offset + i
+					local spell, stance = GetSpellBookItemName(index, BOOKTYPE_SPELL)
+				
+					-- This way we restore the max rank of spells
+					spellCache[spell] = index
+					spellCache[string.lower(spell)] = index
+				
+					if( stance and stance ~= "" ) then
+						spellCache[spell .. stance] = index
+					end
+	 			end
 			end
 		end
 	end
@@ -271,7 +275,7 @@ function ABS:RestoreAction(i, type, actionID, binding, ...)
 	if( type == "spell" or type == "flyout" or type == "companion" ) then
 		local spellName, spellRank = ...
 		if( spellCache[spellName] ) then
-			PickupSpellBookItem(spellName);
+			PickupSpellBookItem(spellCache[spellName], BOOKTYPE_SPELL);
 		else
 		    PickupSpell(actionID)
 		end
