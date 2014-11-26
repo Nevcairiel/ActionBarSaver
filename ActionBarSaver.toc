@@ -1,4 +1,4 @@
-## Interface: 50001
+## Interface: 60000
 ## Title: Action Bar Saver
 ## Notes: Saves and restores your action bars.
 ## Author: Shadowed
