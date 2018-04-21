@@ -6,12 +6,13 @@ ActionBarSaver = select(2, ...)
 local ABS = ActionBarSaver
 local L = ABS.L
 
-local restoreErrors, spellCache, macroCache, macroNameCache, highestRanks = {}, {}, {}, {}, {}
+local restoreErrors, spellCache, mountCache, macroCache, macroNameCache, highestRanks = {}, {}, {}, {}, {}, {}
 local playerClass
 
 local MAX_ACTION_BUTTONS = 144
 local POSSESSION_START = 121
 local POSSESSION_END = 132
+
 local MAX_CHAR_MACROS = MAX_CHARACTER_MACROS
 local MAX_GLOBAL_MACROS = MAX_ACCOUNT_MACROS
 local MAX_MACROS = MAX_CHAR_MACROS + MAX_GLOBAL_MACROS
@@ -94,6 +95,8 @@ function ABS:SaveProfile(name)
 			-- Flyout mnenu
 		    elseif( type == "flyout" ) then
 		        set[actionID] = string.format("%s|%d|%s|%s|%s", type, id, "", (GetFlyoutInfo(id)), "")
+			elseif( type == "summonmount" ) then
+				set[actionID] = string.format("%s|%s", type, id)
 			end
 		end
 	end
@@ -187,6 +190,7 @@ function ABS:RestoreProfile(name, overrideClass)
 	table.wipe(macroCache)
 	table.wipe(spellCache)
 	table.wipe(macroNameCache)
+	table.wipe(mountCache)
 	
 	-- Cache spells
 	for book=1, MAX_SKILLLINE_TABS do
@@ -234,6 +238,19 @@ function ABS:RestoreProfile(name, overrideClass)
 		self:RestoreMacros(set)
 	end
 	
+	-- cache mount list
+	C_MountJournal.SetCollectedFilterSetting(LE_MOUNT_JOURNAL_FILTER_COLLECTED, true)
+	C_MountJournal.SetCollectedFilterSetting(LE_MOUNT_JOURNAL_FILTER_NOT_COLLECTED, false)
+	C_MountJournal.SetCollectedFilterSetting(LE_MOUNT_JOURNAL_FILTER_UNUSABLE, false)
+	C_MountJournal.SetAllSourceFilters(true)
+
+	for i=1, C_MountJournal.GetNumDisplayedMounts() do
+		local creatureName, spellID, icon, active, isUsable, sourceType, isFavorite, isFactionSpecific, faction, isFiltered, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
+		if mountID then
+			mountCache[mountID] = i
+		end
+	end
+
 	-- Start fresh with nothing on the cursor
 	ClearCursor()
 	
@@ -350,6 +367,19 @@ function ABS:RestoreAction(i, type, actionID, binding, ...)
 			return
 		end
 		
+		PlaceAction(i)
+	elseif( type == "summonmount" ) then
+		actionID = tonumber(actionID)
+		if mountCache[actionID] then
+			C_MountJournal.Pickup(mountCache[actionID])
+		end
+		local cursor, id = GetCursorInfo()
+		if( cursor ~= "mount" or id ~= actionID ) then
+			table.insert(restoreErrors, string.format(L["Unable to restore mount id #%d to slot #%d, it appears to have been deleted."], actionID, i))
+			ClearCursor()
+			return
+		end
+
 		PlaceAction(i)
 	end
 end
